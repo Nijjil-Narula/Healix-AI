@@ -1,7 +1,6 @@
 # Healix AI — Clinical AI Diagnostic Platform
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Model](https://img.shields.io/badge/LLM-Groq%20LLaMA--3.3--70b--versatile-00c853.svg)](https://groq.com/)
 [![VectorDB](https://img.shields.io/badge/VectorDB-Pinecone-0066cc.svg)](https://www.pinecone.io/)
 [![Framework](https://img.shields.io/badge/Backend-Flask%20%2B%20LangChain-black.svg)](https://flask.palletsprojects.com/)
 [![Styling](https://img.shields.io/badge/Styling-Tailwind%20CSS%20(Dark%20Mode)-18181b.svg)](https://tailwindcss.com/)
