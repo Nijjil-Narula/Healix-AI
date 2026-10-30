@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Healix AI | Clinical AI Assistant</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom sleek true neutral scrollbar */
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; }
+    .custom-scroll::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+    /* Typing animation */
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-4px); }
+    }
+    .typing-dot {
+      animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+  </style>
+</head>
+<body class="h-full bg-zinc-950 text-zinc-100 font-sans flex overflow-hidden antialiased selection:bg-green-600 selection:text-white">
+
+  <!-- Mobile Backdrop Overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-30 hidden transition-opacity"></div>
+
+  <!-- Sidebar: True Neutral Zinc (bg-zinc-900 border-r border-zinc-800) -->
+  <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-40 w-80 bg-zinc-900 border-r border-zinc-800 flex flex-col transition-all duration-300 ease-in-out -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+    
+    <!-- Sidebar Header -->
+    <div class="p-5 border-b border-zinc-800 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center text-zinc-950 shadow-lg shadow-green-950/60 font-bold">
+          <!-- Stethoscope / Medical Cross SVG -->
+          <svg class="w-5 h-5 text-zinc-950" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5v4a4.5 4.5 0 0 0 9 0v-2.5M18 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-sm font-bold text-white tracking-tight">Healix AI</h2>
+          <p class="text-[11px] text-green-400 font-medium">Clinical Intelligence</p>
+        </div>
+      </div>
+
+      <!-- Start New Consultation Button -->
+      <button id="newChatBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-400 bg-green-950/50 hover:bg-green-900/60 border border-green-500/30 rounded-full transition-all shadow-xs active:scale-95" title="Start new consultation">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span>New</span>
+      </button>
+    </div>
+
+    <!-- History List Header -->
+    <div class="px-5 pt-4 pb-2 flex items-center justify-between text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+      <span>Consultation History</span>
+      <span id="sessionCountBadge" class="text-[10px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full font-medium">0</span>
+    </div>
+
+    <!-- History Item Container -->
+    <ul id="historyList" class="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 custom-scroll">
+      <!-- Populated dynamically via localStorage -->
+    </ul>
+
+    <!-- Sidebar Footer -->
+    <div class="p-4 border-t border-zinc-800 bg-zinc-900/80 text-[11px] text-zinc-400 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+        </span>
+        <span class="font-medium text-zinc-300">Stateless Local Vault</span>
+      </div>
+      <button id="clearAllHistoryBtn" class="text-zinc-500 hover:text-red-400 text-[10px] transition font-medium" title="Clear all local consultation history">
+        Clear All
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Chat Workspace (True Neutral Black bg-zinc-950) -->
+  <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-zinc-950">
+
+    <!-- Top Navigation Bar: bg-zinc-900 border-b border-zinc-800 -->
+    <header class="h-16 border-b border-zinc-800 bg-zinc-900 px-4 sm:px-8 flex items-center justify-between z-10 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <!-- Modern Hamburger Button -->
+        <button id="sidebarToggle" class="p-2 -ml-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition focus:outline-none" aria-label="Toggle consultation history">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-semibold text-white tracking-tight">Healix AI Diagnostic Platform</h1>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-950 text-green-400 border border-green-800/50">
+              Healix Core v1.0
+            </span>
+          </div>
+          <p class="text-xs text-zinc-400 hidden sm:block">Stateless Pinecone Vector Retrieval & Clinical AI</p>
+        </div>
+      </div>
+
+      <!-- Top Right Controls -->
+      <div class="flex items-center gap-2">
+        <button id="resetActiveChatBtn" class="px-3 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 rounded-lg transition font-medium flex items-center gap-1.5" title="Reset current view to homepage">
+          <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span class="hidden md:inline">Reset</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Message Canvas (Floating Bubbles with Soft Drop Shadows) -->
+    <div id="chatCanvas" class="flex-1 overflow-y-auto px-4 sm:px-8 py-6 custom-scroll flex flex-col space-y-4">
+      <!-- Dynamically filled with Empty State or Active Messages -->
+    </div>
+
+    <!-- Input Area: Dark Neutral Zinc Pill (bg-zinc-900 border border-zinc-800 text-white) -->
+    <div class="w-full flex-shrink-0 px-4 pt-1 pb-5 flex justify-center">
+      <form id="chatForm" class="w-11/12 max-w-3xl bg-zinc-900 border border-zinc-800 text-white rounded-full px-3 py-2 flex items-center gap-2 shadow-2xl transition-all focus-within:ring-2 focus-within:ring-green-500/40 focus-within:border-green-500" autocomplete="off">
+        
+        <!-- Medical Stethoscope Mini Icon -->
+        <div class="pl-2.5 text-green-400 hidden sm:block">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5v4a4.5 4.5 0 0 0 9 0v-2.5M18 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+          </svg>
+        </div>
+
+        <!-- Query Input -->
+        <input 
+          id="userInput" 
+          type="text" 
+          class="flex-1 bg-transparent border-0 outline-none text-white placeholder-zinc-400 text-sm py-1.5 px-2 font-normal"
+          placeholder="Ask Healix AI a health question (e.g., 'What are the symptoms of acute sinusitis?')..." 
+          required 
+        />
+
+        <!-- Circular Accented Send Button -->
+        <button 
+          id="sendBtn" 
+          type="submit" 
+          class="w-10 h-10 rounded-full bg-green-600 hover:bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-900/40 transition-all active:scale-95 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" 
+          aria-label="Send message"
+        >
+          <svg class="w-4 h-4 transform rotate-45 -ml-0.5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+  </main>
+
+  <!-- Client-Side Architecture Script -->
+  <script>
+    // ==========================================
+    // 1. DATA LOGIC & LOCALSTORAGE (Strictly Empty by Default)
+    // ==========================================
+    function getSessions() {
+      try {
+        const raw = localStorage.getItem('healix_sessions') || localStorage.getItem('healthwise_sessions');
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (err) {
+        console.warn("Failed to parse sessions from localStorage:", err);
+        return [];
+      }
+    }
+
+    function saveSessions(sessionsList) {
+      try {
+        localStorage.setItem('healix_sessions', JSON.stringify(sessionsList));
+      } catch (err) {
+        console.error("Failed to save sessions to localStorage:", err);
+      }
+    }
+
+    // Initialize LocalStorage with an empty array if not present
+    let sessions = getSessions();
+
+    // Startup State: Strictly null on initial page load (never auto-load past chat)
+    let activeSessionId = null;
+
+    // DOM Elements
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const historyList = document.getElementById('historyList');
+    const sessionCountBadge = document.getElementById('sessionCountBadge');
+    const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+    const chatCanvas = document.getElementById('chatCanvas');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const resetActiveChatBtn = document.getElementById('resetActiveChatBtn');
+
+    // ==========================================
+    // 2. SIDEBAR INTERACTION & TOGGLING
+    // ==========================================
+    function toggleSidebar() {
+      if (window.innerWidth < 768) {
+        const isOpen = !sidebar.classList.contains('-translate-x-full');
+        if (isOpen) {
+          sidebar.classList.add('-translate-x-full');
+          sidebarOverlay.classList.add('hidden');
+        } else {
+          sidebar.classList.remove('-translate-x-full');
+          sidebarOverlay.classList.remove('hidden');
+        }
+      } else {
+        sidebar.classList.toggle('md:hidden');
+      }
+    }
+
+    sidebarToggle.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', () => {
+      sidebar.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    });
+
+    // Start New Consultation: reset active pointer to trigger clean empty-state
+    newChatBtn.addEventListener('click', () => {
+      activeSessionId = null;
+      renderSidebar();
+      renderChatCanvas();
+      userInput.focus();
+      if (window.innerWidth < 768) {
+        sidebar.classList.add('-translate-x-full');
+        sidebarOverlay.classList.add('hidden');
+      }
+    });
+
+    // Reset view to Welcome homepage
+    resetActiveChatBtn.addEventListener('click', () => {
+      activeSessionId = null;
+      renderSidebar();
+      renderChatCanvas();
+      userInput.focus();
+    });
+
+    // Clear All Sessions
+    clearAllHistoryBtn.addEventListener('click', () => {
+      if (sessions.length === 0) return;
+      if (confirm("Clear all consultation history from this browser?")) {
+        sessions = [];
+        activeSessionId = null;
+        saveSessions(sessions);
+        renderSidebar();
+        renderChatCanvas();
+      }
+    });
+
+    // ==========================================
+    // 3. UI RENDERING: SIDEBAR & EMPTY-STATE
+    // ==========================================
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderSidebar() {
+      historyList.innerHTML = '';
+      sessionCountBadge.textContent = sessions.length;
+
+      if (sessions.length === 0) {
+        historyList.innerHTML = `
+          <div class="text-center py-8 px-4 text-zinc-500">
+            <svg class="w-8 h-8 mx-auto mb-2 text-zinc-600 stroke-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <p class="text-xs font-medium text-zinc-400">No past consultations</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">Your sessions will appear here.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Sort newest first
+      sessions.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+      sessions.forEach(session => {
+        const isActive = session.id === activeSessionId;
+        const li = document.createElement('li');
+        li.className = 'group relative';
+
+        li.innerHTML = `
+          <div class="flex items-center justify-between px-3.5 py-2.5 rounded-2xl cursor-pointer transition-all ${
+            isActive 
+              ? 'bg-green-950/40 text-green-300 border border-green-500/30 shadow-sm font-medium' 
+              : 'text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-200'
+          }">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              ${
+                isActive 
+                  ? '<span class="w-1.5 h-5 bg-green-500 rounded-full flex-shrink-0 shadow-sm shadow-green-500/50"></span>' 
+                  : '<span class="w-1.5 h-1.5 bg-zinc-600 rounded-full flex-shrink-0 group-hover:bg-green-400"></span>'
+              }
+              <span class="truncate text-xs">${escapeHtml(session.title)}</span>
+            </div>
+            <button class="delete-session-btn opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition rounded-md ml-1" data-id="${session.id}" title="Delete session">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        `;
+
+        // Switch consultation on click
+        li.querySelector('div').addEventListener('click', (e) => {
+          if (e.target.closest('.delete-session-btn')) return;
+          activeSessionId = session.id;
+          renderSidebar();
+          renderChatCanvas();
+          if (window.innerWidth < 768) {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+          }
+        });
+
+        // Delete consultation
+        const delBtn = li.querySelector('.delete-session-btn');
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sessions = sessions.filter(s => s.id !== session.id);
+          if (activeSessionId === session.id) {
+            activeSessionId = null; // Return to Welcome homepage if active chat was deleted
+          }
+          saveSessions(sessions);
+          renderSidebar();
+          renderChatCanvas();
+        });
+
+        historyList.appendChild(li);
+      });
+    }
+
+    // 3. Beautifully Styled Empty-State "Welcome to Healix AI" Homepage (True Neutral Zinc Theme)
+    function renderEmptyState() {
+      chatCanvas.innerHTML = `
+        <div class="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-xl mx-auto my-auto animate-fade-in">
+          
+          <!-- Medical Glowing Badge -->
+          <div class="w-16 h-16 rounded-3xl bg-green-950/80 border border-green-500/30 flex items-center justify-center text-green-400 shadow-xl shadow-green-950/50 mb-5">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5v4a4.5 4.5 0 0 0 9 0v-2.5M18 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+            </svg>
+          </div>
+
+          <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight mb-2">Welcome to Healix AI</h2>
+          <p class="text-xs sm:text-sm text-zinc-400 max-w-md leading-relaxed mb-8">
+            Your advanced, stateless clinical diagnostic companion. Grounded in medical literature to assist with symptoms, wellness guidelines, and triage protocols.
+          </p>
+
+          <!-- Quick Suggestion Consultation Chips: bg-zinc-900 border-zinc-800 hover:border-green-500/50 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
+            <button type="button" class="prompt-chip p-3.5 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-green-500/50 rounded-2xl shadow-sm transition group text-left cursor-pointer" data-prompt="What are the hallmark differences between influenza and a common cold?">
+              <div class="flex items-center gap-2 font-semibold text-xs text-zinc-200 group-hover:text-green-400">
+                <span>🌡️</span>
+                <span>Cold vs. Influenza</span>
+              </div>
+              <p class="text-[11px] text-zinc-400 mt-1 line-clamp-1">Onset speed, fever differential, and respiratory signs.</p>
+            </button>
+
+            <button type="button" class="prompt-chip p-3.5 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-green-500/50 rounded-2xl shadow-sm transition group text-left cursor-pointer" data-prompt="What dietary strategies are recommended to manage stage 1 hypertension?">
+              <div class="flex items-center gap-2 font-semibold text-xs text-zinc-200 group-hover:text-green-400">
+                <span>🥗</span>
+                <span>Hypertension Protocols</span>
+              </div>
+              <p class="text-[11px] text-zinc-400 mt-1 line-clamp-1">DASH diet principles and sodium moderation thresholds.</p>
+            </button>
+
+            <button type="button" class="prompt-chip p-3.5 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-green-500/50 rounded-2xl shadow-sm transition group text-left cursor-pointer" data-prompt="What are standard CDC recommendations for annual adult immunizations?">
+              <div class="flex items-center gap-2 font-semibold text-xs text-zinc-200 group-hover:text-green-400">
+                <span>💉</span>
+                <span>Vaccine Schedules</span>
+              </div>
+              <p class="text-[11px] text-zinc-400 mt-1 line-clamp-1">Routine boosters, influenza, and shingles schedules.</p>
+            </button>
+
+            <button type="button" class="prompt-chip p-3.5 bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-green-500/50 rounded-2xl shadow-sm transition group text-left cursor-pointer" data-prompt="What are standard non-pharmacological techniques for acute migraine relief?">
+              <div class="flex items-center gap-2 font-semibold text-xs text-zinc-200 group-hover:text-green-400">
+                <span>🧠</span>
+                <span>Migraine Relief</span>
+              </div>
+              <p class="text-[11px] text-zinc-400 mt-1 line-clamp-1">Darkened rest, hydration, and trigger mapping.</p>
+            </button>
+          </div>
+
+          <!-- Clinical Disclaimer -->
+          <div class="mt-8 pt-4 border-t border-zinc-800/80 flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Healix AI provides clinical guidance for informational reference. Seek emergency medical care for acute emergencies.</span>
+          </div>
+
+        </div>
+      `;
+
+      // Attach click events to suggestion chips
+      document.querySelectorAll('.prompt-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const prompt = btn.getAttribute('data-prompt');
+          userInput.value = prompt;
+          chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        });
+      });
+    }
+
+    // ==========================================
+    // 4. MESSAGE CANVAS RENDERING (True Black & Tech Green Theme)
+    // ==========================================
+    // Bot Message Bubbles: Dark elevated neutral cards (bg-zinc-900 border border-green-500/20 text-zinc-100)
+    function appendBotBubble(text) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-start gap-3 max-w-2xl mr-auto animate-fade-in';
+
+      wrapper.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-600 to-emerald-700 text-white flex items-center justify-center shadow-md flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5v4a4.5 4.5 0 0 0 9 0v-2.5M18 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <div class="bg-zinc-900 border border-green-500/20 text-zinc-100 rounded-2xl rounded-tl-none px-4 sm:px-5 py-3.5 shadow-md text-[13.5px] sm:text-[14px] leading-relaxed whitespace-pre-line">
+            ${escapeHtml(text)}
+          </div>
+          <span class="text-[10px] text-green-400 font-semibold mt-1 ml-1">Healix AI</span>
+        </div>
+      `;
+
+      chatCanvas.appendChild(wrapper);
+      chatCanvas.scrollTop = chatCanvas.scrollHeight;
+      return wrapper;
+    }
+
+    // User Message Bubbles: Vibrant tech green (bg-green-600 text-white shadow-lg shadow-green-900/50)
+    function appendUserBubble(text) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'flex items-end justify-end ml-auto max-w-2xl animate-fade-in';
+
+      wrapper.innerHTML = `
+        <div class="flex flex-col items-end">
+          <div class="bg-green-600 text-white shadow-lg shadow-green-900/50 rounded-2xl rounded-tr-none px-4 sm:px-5 py-3 text-[13.5px] sm:text-[14px] leading-relaxed whitespace-pre-line">
+            ${escapeHtml(text)}
+          </div>
+          <span class="text-[10px] text-zinc-400 font-medium mt-1 mr-1">You</span>
+        </div>
+      `;
+
+      chatCanvas.appendChild(wrapper);
+      chatCanvas.scrollTop = chatCanvas.scrollHeight;
+      return wrapper;
+    }
+
+    function appendThinkingIndicator() {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'thinkingIndicator';
+      wrapper.className = 'flex items-start gap-3 max-w-2xl mr-auto';
+
+      wrapper.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-green-900/60 border border-green-500/30 text-green-400 flex items-center justify-center shadow-xs flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3v5a4.5 4.5 0 0 0 9 0V3M9 12.5v4a4.5 4.5 0 0 0 9 0v-2.5M18 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+          </svg>
+        </div>
+        <div class="bg-zinc-900 border border-green-500/20 text-zinc-400 rounded-2xl rounded-tl-none px-4 py-3 shadow-md text-xs flex items-center gap-2">
+          <span>Reviewing medical knowledge base</span>
+          <span class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400 typing-dot"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400 typing-dot"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-green-400 typing-dot"></span>
+          </span>
+        </div>
+      `;
+
+      chatCanvas.appendChild(wrapper);
+      chatCanvas.scrollTop = chatCanvas.scrollHeight;
+      return wrapper;
+    }
+
+    function renderChatCanvas() {
+      chatCanvas.innerHTML = '';
+
+      // If no active session selected or current session has no messages, display empty-state homepage
+      if (!activeSessionId) {
+        renderEmptyState();
+        return;
+      }
+
+      const session = sessions.find(s => s.id === activeSessionId);
+      if (!session || !session.messages || session.messages.length === 0) {
+        renderEmptyState();
+        return;
+      }
+
+      session.messages.forEach(msg => {
+        if (msg.sender === 'user') {
+          appendUserBubble(msg.text);
+        } else {
+          appendBotBubble(msg.text);
+        }
+      });
+
+      chatCanvas.scrollTop = chatCanvas.scrollHeight;
+    }
+
+    // ==========================================
+    // 5. QUERY SUBMISSION & STATELESS DISPATCH
+    // ==========================================
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      // 1. Strict Dynamic Session Creation: Only on first user message
+      let isNewSession = false;
+      let session = sessions.find(s => s.id === activeSessionId);
+
+      if (!session) {
+        isNewSession = true;
+        const newUuid = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+          ? crypto.randomUUID() 
+          : 'session_' + Date.now();
+        
+        // Generate title dynamically from the first query
+        const generatedTitle = text.length > 26 ? text.substring(0, 26) + '...' : text;
+
+        session = {
+          id: newUuid,
+          title: generatedTitle,
+          updatedAt: Date.now(),
+          messages: []
+        };
+
+        sessions.unshift(session);
+        activeSessionId = newUuid;
+      }
+
+      // If viewing empty state on canvas, clear it out before appending bubbles
+      if (isNewSession || session.messages.length === 0) {
+        chatCanvas.innerHTML = '';
+      }
+
+      // Append user message to active state
+      session.messages.push({ sender: 'user', text: text });
+      session.updatedAt = Date.now();
+
+      // Persist in localStorage immediately
+      saveSessions(sessions);
+      renderSidebar();
+      appendUserBubble(text);
+
+      // Reset input bar
+      userInput.value = '';
+      userInput.blur();
+
+      // Show medical thinking indicator
+      const thinkingIndicator = appendThinkingIndicator();
+
+      // Prepare stateless history payload for /get endpoint
+      const historyPayload = session.messages.slice(-8, -1).map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }));
+
+      try {
+        const response = await fetch('/get', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            msg: text,
+            history: historyPayload
+          })
+        });
+
+        let botReply = "Unable to reach the clinical knowledge base. Please check backend connectivity.";
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            botReply = data.reply || data.answer || data.response || JSON.stringify(data);
+          } else {
+            botReply = await response.text();
+          }
+        }
+
+        // Remove thinking indicator
+        thinkingIndicator.remove();
+
+        // Append bot response to session
+        session.messages.push({ sender: 'bot', text: botReply });
+        session.updatedAt = Date.now();
+        saveSessions(sessions);
+        renderSidebar();
+        appendBotBubble(botReply);
+
+      } catch (err) {
+        console.error("Error communicating with backend:", err);
+        thinkingIndicator.remove();
+        const errorReply = "Connectivity error: Unable to contact the clinical server. Please ensure Flask is running.";
+        session.messages.push({ sender: 'bot', text: errorReply });
+        session.updatedAt = Date.now();
+        saveSessions(sessions);
+        renderSidebar();
+        appendBotBubble(errorReply);
+      }
+    });
+
+    // ==========================================
+    // 6. INITIALIZATION: STRICT HOMEPAGE STARTUP
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Never auto-load a past session on page load
+      activeSessionId = null;
+      renderSidebar();
+      renderChatCanvas(); // Always renders empty-state "Welcome to Healix AI"
+      userInput.focus();
+    });
+  </script>
+</body>
+</html>
